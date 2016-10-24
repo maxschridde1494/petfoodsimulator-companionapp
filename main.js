@@ -21,10 +21,13 @@ class AppBehavior extends Behavior{
 			});
 	}
 	onToggleLight(application, value){
-		trace(remotePins + "\n");
-		trace(value + "\n");
-		if (remotePins) remotePins.invoke("/ledBLL/write", value);
-		trace("toggled\n");
+		if (remotePins) {
+			remotePins.invoke("/led/read", val => {
+				trace("Companion LED Value: " + val + "\n");
+			});
+			remotePins.invoke("/led/write", value);
+
+		} 
 	}
 }
 application.behavior = new AppBehavior();
