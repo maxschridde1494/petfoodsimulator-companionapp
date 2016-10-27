@@ -1,3 +1,4 @@
+//COMPANION
 import { 
     RadioGroup, 
     RadioGroupBehavior,
@@ -8,16 +9,13 @@ import {
     HorizontalSlider, HorizontalSliderBehavior
 } from 'sliders';
 
-let backgroundSkin = new Skin({ fill : ["#202020", "#7DBF2E"] });
 let textStyle = new Style({ font: "bold 20px", color: "black" });
 let smallTextStyle = new Style({font: '15px', color: 'black'});
 let feedingStatusStyle = new Style({font: 'bold 15px', color: 'black'});
 let feedingStatusTitleStyle = new Style({font: 'bold 20px', color: 'black'});
+
 let homeButtonSkin = new Skin ({borders:{left: 1, right: 1, bottom: 1, top: 1}, stroke: "black"});
-
-
-var Pins = require("pins");
-let remotePins;
+let backgroundSkin = new Skin({ fill : ["#202020", "#7DBF2E"] });
 
 var feedingStatus = "Inactive";
 var currentSong = "Currently No Music";
@@ -32,7 +30,34 @@ var dailyFoodAllowanceOptions = ["Once", "Twice", "Three Times"];
 var checked = false;
 var radioChecked = false;
 
+var Pins = require("pins");
+let remotePins;
+let deviceURL;
+
+Handler.bind("/discover", Behavior({
+    onInvoke: function(handler, message){
+        trace("Found the device.\n");
+        deviceURL = JSON.parse(message.requestText).url;
+        // var discovery = JSON.parse(message.requestText);
+        handler.invoke(new Message(deviceURL + "respond"), Message.TEXT);    
+    },
+    onComplete: function(handler, message, text){
+        trace("Response was: " + text + "\n");
+    }
+}));
+// Handler.bind("/changeUI", Behavior({
+// 	onInvoke: function(handler, message){
+// 		handler.invoke(new Message(deviceURL + "updateUI"), Message.TEXT);
+// 	},
+// 	onComplete: function(handler, message, text){
+// 		trace("Updated\n");
+// 	}
+// }));
+
 class AppBehavior extends Behavior{
+	onDisplayed(application){
+		application.discover("petfood.device.app");
+	}
 	onLaunch(application){
 		loadHome();
 		let discoveryInstance = Pins.discover(
@@ -40,6 +65,7 @@ class AppBehavior extends Behavior{
 				if (connectionDesc.name == 'pins-share-led'){
 					trace('Connection to remote pins\n');
 					remotePins = Pins.connect(connectionDesc);
+					trace('remotePins has been set\n');
 				}
 			},
 			connectionDesc => {
@@ -49,6 +75,9 @@ class AppBehavior extends Behavior{
 				}
 			});
 	}
+	onQuit(application) {
+        application.forget("petfood.device.app");
+    }
 	onToggleLight(application, value){
 		if (remotePins) {
 			// remotePins.invoke("/led/read", val => {
@@ -159,7 +188,23 @@ var scheduleButton = Container.template($ => ({
 	})
 }));
 var feedDogButton = Container.template($ => ({
-	height: 30, left: 10, right: 10, bottom: 5, active: true, exclusiveTouch: true,
+	height: 30, left: 10, right: 10, bottom: 1, active: true, exclusiveTouch: true,
+	contents: [
+		new Label({name: 'label', hidden: false, width: 200, skin: homeButtonSkin, string: $.string, style: textStyle})
+	],
+	behavior: Behavior ({
+		onTouchBegan: function(container, data){
+			container.label.skin = creamSkin;
+			remotePins.invoke("/led/write", 1)
+			new Message(deviceURL + "updateUI").invoke(Message.JSON);
+		},
+		onTouchEnded: function(container, data){
+			container.label.skin = homeButtonSkin;
+		}
+	})
+}));
+var playMusicButton = Container.template($ => ({
+	height: 30, left: 10, right: 10, bottom: 1, active: true, exclusiveTouch: true,
 	contents: [
 		new Label({name: 'label', hidden: false, width: 200, skin: homeButtonSkin, string: $.string, style: textStyle})
 	],
@@ -172,8 +217,9 @@ var feedDogButton = Container.template($ => ({
 		}
 	})
 }));
-var playMusicButton = Container.template($ => ({
-	height: 30, left: 10, right: 10, bottom: 5, active: true, exclusiveTouch: true,
+
+var pauseButton = Container.template($ => ({
+	height: 30, left: 10, right: 10, active: true, exclusiveTouch: true,
 	contents: [
 		new Label({name: 'label', hidden: false, width: 200, skin: homeButtonSkin, string: $.string, style: textStyle})
 	],
@@ -183,6 +229,8 @@ var playMusicButton = Container.template($ => ({
 		},
 		onTouchEnded: function(container, data){
 			container.label.skin = homeButtonSkin;
+			remotePins.invoke("/led/write", 0);
+			new Message(deviceURL + "resetUI").invoke(Message.JSON);
 		}
 	})
 }));
@@ -292,7 +340,7 @@ let MainContainer = Container.template($ => ({
     			new backButton({string: 'Back'}),
     			new Line({
 		    		name: 'status',
-		    		height: 200,
+		    		height: 200, left: 5, right: 5,
 		    		skin: greyBlueSkin,
 		    		contents:[
 		    			new Column({
@@ -355,32 +403,17 @@ let MainContainer = Container.template($ => ({
 		    	}),
 		    	new Column({
 		    		name: 'buttons',
-		    		top: 5, height: 140, left: 5, right: 5,
+		    		top: 5, height: 140, left: 5, right: 5, bottom: 5,
 		    		skin: darkGreySkin,
 		    		contents:[
 		    			new feedDogButton({string: "Feed Dog"}),
-		    			new playMusicButton({string: "Play Music"})
+		    			new playMusicButton({string: "Play Music"}),
+    					new pauseButton({string: "Pause All"})
 		    		]
 		    	})
     		]
     	})
     ],
-    // contents: [
-    //     Label($, { name: "statusString", top: 0, bottom: 0, left: 0, right: 0, style: textStyle, string: "OFF" }),
-    // ],
-    // Behavior: class extends Behavior {
-    //     onTouchBegan(container) {
-    //         container.state = 1;
-    //         application.distribute("onToggleLight", 1);
-    //     }
-    //     onTouchEnded(container) {
-    //         container.state = 0;
-    //         application.distribute("onToggleLight", 0);
-    //     }
-    //     // onToggleLight(container, value) {
-    //     //     container.statusString.string = (value) ? "ON" : "OFF";
-    //     // }
-    // }
 }));
 
 let scheduleScreen = Container.template($ => ({
