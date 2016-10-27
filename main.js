@@ -1,3 +1,13 @@
+import { 
+    RadioGroup, 
+    RadioGroupBehavior,
+    LabeledCheckbox
+} from 'buttons';
+
+import {
+    HorizontalSlider, HorizontalSliderBehavior
+} from 'sliders';
+
 let backgroundSkin = new Skin({ fill : ["#202020", "#7DBF2E"] });
 let textStyle = new Style({ font: "bold 20px", color: "black" });
 let smallTextStyle = new Style({font: '15px', color: 'black'});
@@ -11,9 +21,16 @@ let remotePins;
 
 var feedingStatus = "Inactive";
 var currentSong = "Currently No Music";
-var day = 0;
 var amount = 0;
+var tempAmount = 0;
 var automatedMusic = 0;
+var automatedMusicTemp = 0;
+var automatedMusicTemp = 0;
+var dailyFoodAllowance = "Once";
+var dailyFoodAllowanceTemp = "Once";
+var dailyFoodAllowanceOptions = ["Once", "Twice", "Three Times"];
+var checked = false;
+var radioChecked = false;
 
 class AppBehavior extends Behavior{
 	onLaunch(application){
@@ -61,12 +78,17 @@ function loadMain(){
 	application.main.maincolumn.status.dogInfo.image.add(dogImage);
 	application.main.maincolumn.status.feedingStatus.col.food.string += feedingStatus;
 	application.main.maincolumn.status.feedingStatus.col.song.string += currentSong;
-	application.main.maincolumn.currFeedingSchedule.col1.col2.lst.day.string += String(day);
+	application.main.maincolumn.currFeedingSchedule.col1.col2.lst.day.string += dailyFoodAllowance;
 	application.main.maincolumn.currFeedingSchedule.col1.col2.lst.amount.string += String(amount);
-	application.main.maincolumn.currFeedingSchedule.col1.col2.lst.music.string += String(automatedMusic);
+	if (automatedMusic == 1){
+		application.main.maincolumn.currFeedingSchedule.col1.col2.lst.music.string += "Yes";
+	}else{
+		application.main.maincolumn.currFeedingSchedule.col1.col2.lst.music.string += "No";
+	}
 }
 function loadSchedule(){
 	application.empty();
+	application.add(new scheduleScreen());
 
 }
 
@@ -79,23 +101,47 @@ var homeScreen = Container.template($ => ({
 var homeScreenButton = Container.template($ => ({
 	height: 50, left: 20, right: 20, bottom: 10, active: true, exclusiveTouch: true,
 	contents: [
-		new Label({hidden: false, width: 200, skin: homeButtonSkin, string: "Proceed", style: textStyle})
+		new Label({name: 'label', hidden: false, width: 200, skin: homeButtonSkin, string: "Proceed", style: textStyle})
 	],
 	behavior: Behavior ({
+		onTouchBegan: function(container, data){
+			container.label.skin = creamSkin;
+		},
 		onTouchEnded: function(container, data){
+			container.label.skin = homeButtonSkin;
 			loadMain();
 		}
+
 	})
 }));
 
 var backButton = Container.template($ => ({
 	height: 30, left: 10, right: 10, bottom: 5, active: true, exclusiveTouch: true,
 	contents: [
-		new Label({hidden: false, width: 200, skin: homeButtonSkin, string: $.string, style: textStyle})
+		new Label({name: 'label', hidden: false, width: 200, skin: homeButtonSkin, string: $.string, style: textStyle})
 	],
 	behavior: Behavior ({
+		onTouchBegan: function(container, data){
+			container.label.skin = blueSkin;
+		},
 		onTouchEnded: function(container, data){
+			container.label.skin = homeButtonSkin;
 			loadHome();
+		}
+	})
+}));
+var backButton2 = Container.template($ => ({
+	height: 30, left: 10, right: 10, bottom: 5, active: true, exclusiveTouch: true,
+	contents: [
+		new Label({name: 'label',hidden: false, width: 200, skin: homeButtonSkin, string: $.string, style: textStyle})
+	],
+	behavior: Behavior ({
+		onTouchBegan: function(container, data){
+			container.label.skin = blueSkin;
+		},
+		onTouchEnded: function(container, data){
+			container.label.skin = homeButtonSkin;
+			loadMain();
 		}
 	})
 }));
@@ -107,6 +153,8 @@ var scheduleButton = Container.template($ => ({
 	behavior: Behavior ({
 		onTouchEnded: function(container, data){
 			loadSchedule();
+			checked = false;
+			radioChecked = false;
 		}
 	})
 }));
@@ -139,6 +187,85 @@ var playMusicButton = Container.template($ => ({
 	})
 }));
 
+var setScheduleButton = Container.template($ => ({
+	height: 30, left: 10, right: 5, bottom: 5, active: true, exclusiveTouch: true,
+	contents: [
+		new Label({name: 'label', hidden: false, width: 130, skin: homeButtonSkin, string: $.string, style: textStyle})
+	],
+	behavior: Behavior ({
+		onTouchBegan: function(container, data){
+			container.label.skin = creamSkin;
+		},
+		onTouchEnded: function(container, data){
+			container.label.skin = homeButtonSkin;
+			if (checked == false){
+				automatedMusic = 0;
+			}
+			if (radioChecked != false){
+				amount = tempAmount;
+				dailyFoodAllowance = dailyFoodAllowanceTemp;
+				automatedMusic = automatedMusicTemp;
+				loadMain();
+			}
+		}
+	})
+}));
+
+var resetButton = Container.template($ => ({
+	height: 30, left: 5, right: 10, bottom: 5, active: true, exclusiveTouch: true,
+	contents: [
+		new Label({name: 'label', hidden: false, width: 130, skin: homeButtonSkin, string: $.string, style: textStyle})
+	],
+	behavior: Behavior ({
+		onTouchBegan: function(container, data){
+			container.label.skin = creamSkin;
+		},
+		onTouchEnded: function(container, data){
+			container.label.skin = homeButtonSkin;
+			checked = false;
+			radioChecked = false;
+			automatedMusicTemp = 0;
+			dailyFoodAllowanceTemp = "Once";
+			tempAmount = 0;
+			loadSchedule();
+		}
+	})
+}));
+
+let radioButtonTemplate = RadioGroup.template($ => ({
+    top: 0, bottom: 0, left: 5,
+    style: smallTextStyle,
+    Behavior: class extends RadioGroupBehavior {
+        onRadioButtonSelected(buttonName) {
+            dailyFoodAllowanceTemp = buttonName;
+            radioChecked = true;
+        }
+    }
+}));
+
+let checkBoxTemplate = LabeledCheckbox.template($ => ({
+    name: $.name, active: true, top: 0, bottom: 0, left: 5,
+    behavior: Behavior({
+        onSelected: function(checkBox){
+            automatedMusicTemp = 1;
+            checked = true;
+        },
+        onUnselected: function(checkBox){
+            automatedMusicTemp = 0;
+            checked = false;
+        }
+    })
+}));
+
+let sliderTemplate = HorizontalSlider.template($ => ({
+    height: 50, left: 50, right: 50,
+    Behavior: class extends HorizontalSliderBehavior {
+        onValueChanged(container) {
+            tempAmount = this.data.value;
+        }
+    }
+}));
+
 let blueSkin = new Skin({fill: "#004489"});
 let creamSkin = new Skin({fill: "#E1E1D6"});
 let greyBlueSkin = new Skin({fill: "#D3D9DF"});
@@ -147,7 +274,7 @@ let darkGreySkin = new Skin({fill: "#565656"});
 let creamGreySkin = new Skin({fill: "#DBDBCE"});
 let whiteSkin = new Skin ({fill: 'white'});
 
-let headlineStyle = new Style({font: 'bold 50px', color: 'black'});
+let headlineStyle = new Style({font: 'bold 25px', color: 'black'});
 
 
 let dogSkin = new Skin ({fill: "#white", borders:{left: 1, right: 1, bottom: 1, top: 1}, stroke: "black"});
@@ -261,5 +388,42 @@ let scheduleScreen = Container.template($ => ({
     top: 0, bottom: 0, left: 0, right: 0,
     active: true, skin: greyBlueSkin, state: 0,
     contents: [
+    	new Column({
+    		name: 'maincol', top: 0, bottom: 0, right: 0, left: 0,
+    		contents: [
+    			new backButton2({string: 'Back'}),
+    			new Line({
+    				name: 'checkBox',
+    				top: 0, bottom: 0, right: 0, left: 0,
+    				contents:[
+    					new checkBoxTemplate({name: 'Play music @ scheduled feeding?'})
+    				]
+    			}),
+    			new Column({
+    				name: 'numberFeedings',
+    				skin: blueSkin, top: 0, bottom: 0, right: 0, left: 0,
+    				contents:[
+    					new Label({style: headlineStyle, string: "Select # of Feedings Per Day:"}),
+    					new radioButtonTemplate({buttonNames: dailyFoodAllowanceOptions.join()})
+    				]
+    			}),
+    			new Column({
+    				name: 'slider', skin: creamSkin,
+    				top: 0, bottom: 0, left: 0, right: 0,
+    				contents:[
+    					new Label({style: headlineStyle, string: "Input Food Amount:"}),
+    					new sliderTemplate({ min: 0, max: 50, value: 0 })
+    				]
+    			}),
+    			new Line({
+    				name: 'buttons', skin: blueSkin,
+    				top: 0, bottom: 0, left: 0, right: 0,
+    				contents:[
+    					new setScheduleButton({string: "Set Schedule"}),
+    					new resetButton({string: "Reset"})
+    				]
+    			})
+    		]
+    	})
     ]
 }));
