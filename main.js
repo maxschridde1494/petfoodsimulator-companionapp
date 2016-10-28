@@ -9,13 +9,14 @@ import {
     HorizontalSlider, HorizontalSliderBehavior
 } from 'sliders';
 
-let textStyle = new Style({ font: "bold 20px", color: "black" });
-let smallTextStyle = new Style({font: '15px', color: 'black'});
-let feedingStatusStyle = new Style({font: 'bold 15px', color: 'black'});
-let feedingStatusTitleStyle = new Style({font: 'bold 20px', color: 'black'});
+let textStyle = new Style({ font: "bold 20px", color: "white" });
+let smallTextStyle = new Style({font: '15px', color: 'white'});
+let feedingStatusStyle = new Style({font: 'bold 15px', color: 'white'});
+let feedingStatusTitleStyle = new Style({font: 'bold 20px', color: 'white'});
 
 let homeButtonSkin = new Skin ({borders:{left: 1, right: 1, bottom: 1, top: 1}, stroke: "black"});
 let backgroundSkin = new Skin({ fill : ["#202020", "#7DBF2E"] });
+let blueSkin = new Skin({fill: "#004489"});
 
 var feedingStatus = "Inactive";
 var currentSong = "Currently No Music";
@@ -45,14 +46,6 @@ Handler.bind("/discover", Behavior({
         trace("Response was: " + text + "\n");
     }
 }));
-// Handler.bind("/changeUI", Behavior({
-// 	onInvoke: function(handler, message){
-// 		handler.invoke(new Message(deviceURL + "updateUI"), Message.TEXT);
-// 	},
-// 	onComplete: function(handler, message, text){
-// 		trace("Updated\n");
-// 	}
-// }));
 
 class AppBehavior extends Behavior{
 	onDisplayed(application){
@@ -108,7 +101,7 @@ function loadMain(){
 	application.main.maincolumn.status.feedingStatus.col.food.string += feedingStatus;
 	application.main.maincolumn.status.feedingStatus.col.song.string += currentSong;
 	application.main.maincolumn.currFeedingSchedule.col1.col2.lst.day.string += dailyFoodAllowance;
-	application.main.maincolumn.currFeedingSchedule.col1.col2.lst.amount.string += String(amount);
+	application.main.maincolumn.currFeedingSchedule.col1.col2.lst.amount.string += String(Math.round(amount));
 	if (automatedMusic == 1){
 		application.main.maincolumn.currFeedingSchedule.col1.col2.lst.music.string += "Yes";
 	}else{
@@ -195,11 +188,12 @@ var feedDogButton = Container.template($ => ({
 	behavior: Behavior ({
 		onTouchBegan: function(container, data){
 			container.label.skin = creamSkin;
-			remotePins.invoke("/led/write", 1)
+			remotePins.invoke("/led/write", 1);
 			new Message(deviceURL + "updateUI").invoke(Message.JSON);
 		},
 		onTouchEnded: function(container, data){
 			container.label.skin = homeButtonSkin;
+			application.main.maincolumn.status.feedingStatus.col.food.string = "Active";
 		}
 	})
 }));
@@ -231,6 +225,7 @@ var pauseButton = Container.template($ => ({
 			container.label.skin = homeButtonSkin;
 			remotePins.invoke("/led/write", 0);
 			new Message(deviceURL + "resetUI").invoke(Message.JSON);
+			application.main.maincolumn.status.feedingStatus.col.food.string = "Inactive";
 		}
 	})
 }));
@@ -314,7 +309,6 @@ let sliderTemplate = HorizontalSlider.template($ => ({
     }
 }));
 
-let blueSkin = new Skin({fill: "#004489"});
 let creamSkin = new Skin({fill: "#E1E1D6"});
 let greyBlueSkin = new Skin({fill: "#D3D9DF"});
 let greySkin = new Skin({fill: "#989898"});
@@ -341,7 +335,7 @@ let MainContainer = Container.template($ => ({
     			new Line({
 		    		name: 'status',
 		    		height: 200, left: 5, right: 5,
-		    		skin: greyBlueSkin,
+		    		skin: blueSkin,
 		    		contents:[
 		    			new Column({
 		    				name: 'dogInfo',
@@ -377,7 +371,7 @@ let MainContainer = Container.template($ => ({
 		    	new Line({
 		    		name: 'currFeedingSchedule',
 		    		top: 5, height: 140, left: 5, right: 5,
-		    		skin: creamSkin,
+		    		skin: blueSkin,
 		    		contents:[
 		    			new Column({
 		    				name: 'col1', top: 0, bottom: 0, left: 0, right: 0,
@@ -404,7 +398,7 @@ let MainContainer = Container.template($ => ({
 		    	new Column({
 		    		name: 'buttons',
 		    		top: 5, height: 140, left: 5, right: 5, bottom: 5,
-		    		skin: darkGreySkin,
+		    		skin: blueSkin,
 		    		contents:[
 		    			new feedDogButton({string: "Feed Dog"}),
 		    			new playMusicButton({string: "Play Music"}),
