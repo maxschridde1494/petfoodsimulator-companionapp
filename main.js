@@ -32,8 +32,10 @@ var checked = false;
 var radioChecked = false;
 
 var Pins = require("pins");
+var active = false;
 let remotePins;
 let deviceURL;
+var analogReader = undefined;
 
 Handler.bind("/discover", Behavior({
     onInvoke: function(handler, message){
@@ -71,13 +73,16 @@ class AppBehavior extends Behavior{
 	onQuit(application) {
         application.forget("petfood.device.app");
     }
-	onToggleLight(application, value){
+	onToggle(application){
 		if (remotePins) {
-			// remotePins.invoke("/led/read", val => {
-			// 	trace("Companion LED Value: " + val + "\n");
-			// });
-			remotePins.invoke("/led/write", value);
-
+			trace(active + '\n');
+			if (active == true){
+				if (analogReader == undefined){
+					analogReader = remotePins.repeat("/analog/read", 10, function(result){
+						application.main.maincolumn.status.feedingStatus.col.food.string = "Active " + String(Math.round(result*100)) + "%";
+					});
+				}
+			}
 		} 
 	}
 }
@@ -107,6 +112,7 @@ function loadMain(){
 	}else{
 		application.main.maincolumn.currFeedingSchedule.col1.col2.lst.music.string += "No";
 	}
+	application.delegate("onToggle");
 }
 function loadSchedule(){
 	application.empty();
@@ -189,11 +195,16 @@ var feedDogButton = Container.template($ => ({
 		onTouchBegan: function(container, data){
 			container.label.skin = creamSkin;
 			remotePins.invoke("/led/write", 1);
+			trace("turn on\n");
 			new Message(deviceURL + "updateUI").invoke(Message.JSON);
 		},
 		onTouchEnded: function(container, data){
 			container.label.skin = homeButtonSkin;
 			application.main.maincolumn.status.feedingStatus.col.food.string = "Active";
+			if (active == false){
+				active = true;
+				application.delegate("onToggle");
+			}
 		}
 	})
 }));
@@ -223,9 +234,14 @@ var pauseButton = Container.template($ => ({
 		},
 		onTouchEnded: function(container, data){
 			container.label.skin = homeButtonSkin;
+			active = false;
+			if (analogReader){
+				analogReader.close();
+				analogReader = undefined;
+			}
 			remotePins.invoke("/led/write", 0);
+			application.main.maincolumn.status.feedingStatus.col.food.string = "Paused";
 			new Message(deviceURL + "resetUI").invoke(Message.JSON);
-			application.main.maincolumn.status.feedingStatus.col.food.string = "Inactive";
 		}
 	})
 }));
