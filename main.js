@@ -1,8 +1,7 @@
 //COMPANION
 import { 
     RadioGroup, 
-    RadioGroupBehavior,
-    LabeledCheckbox
+    RadioGroupBehavior
 } from 'buttons';
 
 import {
@@ -10,21 +9,20 @@ import {
 } from 'sliders';
 
 let textStyle = new Style({ font: "bold 20px", color: "white" });
+let backButtonStyle = new Style({ font: "bold 20px", color: "black" });
+
 let smallTextStyle = new Style({font: '15px', color: 'white'});
 let feedingStatusStyle = new Style({font: 'bold 15px', color: 'white'});
 let feedingStatusTitleStyle = new Style({font: 'bold 20px', color: 'white'});
 
 let homeButtonSkin = new Skin ({borders:{left: 1, right: 1, bottom: 1, top: 1}, stroke: "black"});
+let homeButtonSkin2 = new Skin ({borders:{left: 1, right: 1, bottom: 1, top: 1}, stroke: "white"});
 let backgroundSkin = new Skin({ fill : ["#202020", "#7DBF2E"] });
 let blueSkin = new Skin({fill: "#004489"});
 
 var feedingStatus = "Inactive";
-var currentSong = "Currently No Music";
 var amount = 0;
 var tempAmount = 0;
-var automatedMusic = 0;
-var automatedMusicTemp = 0;
-var automatedMusicTemp = 0;
 var dailyFoodAllowance = "Once";
 var dailyFoodAllowanceTemp = "Once";
 var dailyFoodAllowanceOptions = ["Once", "Twice", "Three Times"];
@@ -39,18 +37,31 @@ var analogReader = undefined;
 
 Handler.bind("/discover", Behavior({
     onInvoke: function(handler, message){
-        trace("Found the device.\n");
+        trace("Companion Found the device.\n");
         deviceURL = JSON.parse(message.requestText).url;
-        // var discovery = JSON.parse(message.requestText);
         handler.invoke(new Message(deviceURL + "respond"), Message.TEXT);    
     },
     onComplete: function(handler, message, text){
         trace("Response was: " + text + "\n");
     }
 }));
+Handler.bind("/respond", Behavior({
+    onInvoke: function(handler, message){
+        message.responseText = "Device, you found me!";
+        message.status = 200;    
+    }
+}));
+
+Handler.bind("/getSchedule", Behavior({
+	onInvoke: function(handler, message){
+		message.responseText = dailyFoodAllowance;
+		message.status = 200;
+	}
+}));
 
 class AppBehavior extends Behavior{
 	onDisplayed(application){
+		application.shared = true;
 		application.discover("petfood.device.app");
 	}
 	onLaunch(application){
@@ -69,8 +80,11 @@ class AppBehavior extends Behavior{
 					remotePins = undefined;
 				}
 			});
+		trace(new Date().toLocaleString() + '\n');
+
 	}
 	onQuit(application) {
+        application.shared = false;
         application.forget("petfood.device.app");
     }
 	onToggle(application){
@@ -93,6 +107,12 @@ function loadHome(){
 	application.add(new homeScreen({name: 'home'}));	
 	let homeImage = new Picture({url: "assets/home.png"});
 	application.home.add(homeImage);
+	var homeLabel = new Label({
+		left: 0, right: 0, bottom: 80,
+		string: "Welcome to Pet Feeder!",
+		style: textStyle
+	});
+	application.home.add(homeLabel);
 	application.home.add(new homeScreenButton());
 
 }
@@ -104,14 +124,8 @@ function loadMain(){
 	dogImage.aspect = 'fill';
 	application.main.maincolumn.status.dogInfo.image.add(dogImage);
 	application.main.maincolumn.status.feedingStatus.col.food.string += feedingStatus;
-	application.main.maincolumn.status.feedingStatus.col.song.string += currentSong;
 	application.main.maincolumn.currFeedingSchedule.col1.col2.lst.day.string += dailyFoodAllowance;
-	application.main.maincolumn.currFeedingSchedule.col1.col2.lst.amount.string += String(Math.round(amount));
-	if (automatedMusic == 1){
-		application.main.maincolumn.currFeedingSchedule.col1.col2.lst.music.string += "Yes";
-	}else{
-		application.main.maincolumn.currFeedingSchedule.col1.col2.lst.music.string += "No";
-	}
+	application.main.maincolumn.currFeedingSchedule.col1.col2.lst.amount.string += String(Math.round(amount)) + "grams";
 	application.delegate("onToggle");
 }
 function loadSchedule(){
@@ -129,7 +143,7 @@ var homeScreen = Container.template($ => ({
 var homeScreenButton = Container.template($ => ({
 	height: 50, left: 20, right: 20, bottom: 10, active: true, exclusiveTouch: true,
 	contents: [
-		new Label({name: 'label', hidden: false, width: 200, skin: homeButtonSkin, string: "Proceed", style: textStyle})
+		new Label({name: 'label', hidden: false, width: 200, skin: homeButtonSkin2, string: "Proceed", style: textStyle})
 	],
 	behavior: Behavior ({
 		onTouchBegan: function(container, data){
@@ -146,14 +160,14 @@ var homeScreenButton = Container.template($ => ({
 var backButton = Container.template($ => ({
 	height: 30, left: 10, right: 10, bottom: 5, active: true, exclusiveTouch: true,
 	contents: [
-		new Label({name: 'label', hidden: false, width: 200, skin: homeButtonSkin, string: $.string, style: textStyle})
+		new Label({name: 'label', hidden: false, width: 200, skin: blueSkin, string: $.string, style: textStyle})
 	],
 	behavior: Behavior ({
 		onTouchBegan: function(container, data){
-			container.label.skin = blueSkin;
+			container.label.skin = homeButtonSkin;
 		},
 		onTouchEnded: function(container, data){
-			container.label.skin = homeButtonSkin;
+			container.label.skin = blueSkin;
 			loadHome();
 		}
 	})
@@ -161,14 +175,14 @@ var backButton = Container.template($ => ({
 var backButton2 = Container.template($ => ({
 	height: 30, left: 10, right: 10, bottom: 5, active: true, exclusiveTouch: true,
 	contents: [
-		new Label({name: 'label',hidden: false, width: 200, skin: homeButtonSkin, string: $.string, style: textStyle})
+		new Label({name: 'label',hidden: false, width: 200, skin: blueSkin, string: $.string, style: textStyle})
 	],
 	behavior: Behavior ({
 		onTouchBegan: function(container, data){
-			container.label.skin = blueSkin;
+			container.label.skin = homeButtonSkin;
 		},
 		onTouchEnded: function(container, data){
-			container.label.skin = homeButtonSkin;
+			container.label.skin = blueSkin;
 			loadMain();
 		}
 	})
@@ -208,20 +222,6 @@ var feedDogButton = Container.template($ => ({
 		}
 	})
 }));
-var playMusicButton = Container.template($ => ({
-	height: 30, left: 10, right: 10, bottom: 1, active: true, exclusiveTouch: true,
-	contents: [
-		new Label({name: 'label', hidden: false, width: 200, skin: homeButtonSkin, string: $.string, style: textStyle})
-	],
-	behavior: Behavior ({
-		onTouchBegan: function(container, data){
-			container.label.skin = creamSkin;
-		},
-		onTouchEnded: function(container, data){
-			container.label.skin = homeButtonSkin;
-		}
-	})
-}));
 
 var pauseButton = Container.template($ => ({
 	height: 30, left: 10, right: 10, active: true, exclusiveTouch: true,
@@ -240,7 +240,7 @@ var pauseButton = Container.template($ => ({
 				analogReader = undefined;
 			}
 			remotePins.invoke("/led/write", 0);
-			application.main.maincolumn.status.feedingStatus.col.food.string = "Paused";
+			application.main.maincolumn.status.feedingStatus.col.food.string = "Inactive";
 			new Message(deviceURL + "resetUI").invoke(Message.JSON);
 		}
 	})
@@ -257,13 +257,9 @@ var setScheduleButton = Container.template($ => ({
 		},
 		onTouchEnded: function(container, data){
 			container.label.skin = homeButtonSkin;
-			if (checked == false){
-				automatedMusic = 0;
-			}
 			if (radioChecked != false){
 				amount = tempAmount;
 				dailyFoodAllowance = dailyFoodAllowanceTemp;
-				automatedMusic = automatedMusicTemp;
 				loadMain();
 			}
 		}
@@ -283,7 +279,6 @@ var resetButton = Container.template($ => ({
 			container.label.skin = homeButtonSkin;
 			checked = false;
 			radioChecked = false;
-			automatedMusicTemp = 0;
 			dailyFoodAllowanceTemp = "Once";
 			tempAmount = 0;
 			loadSchedule();
@@ -302,20 +297,6 @@ let radioButtonTemplate = RadioGroup.template($ => ({
     }
 }));
 
-let checkBoxTemplate = LabeledCheckbox.template($ => ({
-    name: $.name, active: true, top: 0, bottom: 0, left: 5,
-    behavior: Behavior({
-        onSelected: function(checkBox){
-            automatedMusicTemp = 1;
-            checked = true;
-        },
-        onUnselected: function(checkBox){
-            automatedMusicTemp = 0;
-            checked = false;
-        }
-    })
-}));
-
 let sliderTemplate = HorizontalSlider.template($ => ({
     height: 50, left: 50, right: 50,
     Behavior: class extends HorizontalSliderBehavior {
@@ -332,7 +313,7 @@ let darkGreySkin = new Skin({fill: "#565656"});
 let creamGreySkin = new Skin({fill: "#DBDBCE"});
 let whiteSkin = new Skin ({fill: 'white'});
 
-let headlineStyle = new Style({font: 'bold 25px', color: 'black'});
+let headlineStyle = new Style({font: 'bold 25px', color: 'white'});
 
 
 let dogSkin = new Skin ({fill: "#white", borders:{left: 1, right: 1, bottom: 1, top: 1}, stroke: "black"});
@@ -368,16 +349,16 @@ let MainContainer = Container.template($ => ({
 		    			}),
 		    			new Container({
 		    				name: 'feedingStatus',
-		    				top: 5, bottom: 5, left: 5, right: 5,
+		    				top: 5, bottom: 5, right: 5,
 		    				contents: [
 		    					new Column({ 
 		    						name: 'col',
 		    						top: 0, bottom: 0, left: 0, right: 0,
 		    						contents: [
-		    							new Label({left: 5, style: feedingStatusTitleStyle, string: 'Feeding Status: \n'}),
-		    							new Label({name: 'food', left: 5, style: feedingStatusStyle, string: ''}),
-		    							new Label({left: 5, style: feedingStatusTitleStyle, string: 'Song: \n'}),
-		    							new Label({name: 'song', left: 5, style: feedingStatusStyle, string: ''}),
+		    							new Label({left: .1, style: feedingStatusTitleStyle, string: 'Feeding Status: \n'}),
+		    							new Label({name: 'food', left: .1, style: feedingStatusStyle, string: ''}),
+		    							new Label({left: .1, style: feedingStatusTitleStyle, string: 'Song: \n'}),
+		    							new Label({name: 'song', left: .1, style: smallTextStyle, string: 'All Along the Watchtower'}),
 		    						]
 		    					})
 		    				]
@@ -401,7 +382,6 @@ let MainContainer = Container.template($ => ({
 		    								contents: [
 		    									new Label({name: 'day', left: 0, right: 0, style: smallTextStyle ,string: "Times Per Day: "}),
 		    									new Label({name: 'amount', left: 0, right: 0, style: smallTextStyle ,string: "Amount Per Feeding: "}),
-		    									new Label({name: 'music', left: 0, right: 0, style: smallTextStyle ,string: "Automated Music: "})
 		    								]
 		    							}),
 		    							new scheduleButton({string: "Set Feeding Schedule"})
@@ -416,9 +396,8 @@ let MainContainer = Container.template($ => ({
 		    		top: 5, height: 140, left: 5, right: 5, bottom: 5,
 		    		skin: blueSkin,
 		    		contents:[
-		    			new feedDogButton({string: "Feed Dog"}),
-		    			new playMusicButton({string: "Play Music"}),
-    					new pauseButton({string: "Pause All"})
+		    			new feedDogButton({string: "Start Feeding Schedule"}),
+    					new pauseButton({string: "Stop"})
 		    		]
 		    	})
     		]
@@ -435,13 +414,6 @@ let scheduleScreen = Container.template($ => ({
     		name: 'maincol', top: 0, bottom: 0, right: 0, left: 0,
     		contents: [
     			new backButton2({string: 'Back'}),
-    			new Line({
-    				name: 'checkBox',
-    				top: 0, bottom: 0, right: 0, left: 0,
-    				contents:[
-    					new checkBoxTemplate({name: 'Play music @ scheduled feeding?'})
-    				]
-    			}),
     			new Column({
     				name: 'numberFeedings',
     				skin: blueSkin, top: 0, bottom: 0, right: 0, left: 0,
